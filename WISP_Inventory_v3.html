@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1117">
+<title>WISP Inventory · P110</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- docx generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.2/docx.umd.min.js"></script>
+<!-- xlsx generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;--s1:#161b25;--s2:#1c2333;--border:#2a3347;
+  --accent:#f0a500;--green:#2ecc71;--red:#e74c3c;--blue:#4a9eff;--purple:#a78bfa;
+  --text:#e6edf3;--muted:#7d8fa8;--font:'Space Grotesk',sans-serif;--mono:'JetBrains Mono',monospace;
+  --radius:12px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;padding-bottom:80px;}
+
+/* ── HEADER ── */
+.header{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.header-left{display:flex;flex-direction:column;gap:2px;}
+.brand{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--accent);letter-spacing:1px;}
+.brand span{color:var(--muted);}
+.sub-brand{font-size:10px;color:var(--muted);letter-spacing:.5px;}
+.date-pill{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--border);padding:5px 10px;border-radius:20px;}
+
+/* ── BOTTOM NAV (mobile) ── */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--border);display:flex;z-index:50;padding-bottom:env(safe-area-inset-bottom);}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;cursor:pointer;color:var(--muted);transition:color .2s;font-size:9px;font-weight:600;letter-spacing:.5px;border:none;background:none;}
+.nav-item .icon{font-size:20px;line-height:1;}
+.nav-item.active{color:var(--accent);}
+.nav-item.active .icon{filter:drop-shadow(0 0 6px var(--accent));}
+
+/* ── PAGES ── */
+.page{display:none;padding:16px;max-width:680px;margin:0 auto;animation:fadeIn .2s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.kpi.orange::before{background:var(--accent);}
+.kpi.green::before{background:var(--green);}
+.kpi.red::before{background:var(--red);}
+.kpi.blue::before{background:var(--blue);}
+.kpi-label{font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;}
+.kpi-val{font-family:var(--mono);font-size:28px;font-weight:600;line-height:1;}
+.kpi.orange .kpi-val{color:var(--accent);}
+.kpi.green .kpi-val{color:var(--green);}
+.kpi.red .kpi-val{color:var(--red);}
+.kpi.blue .kpi-val{color:var(--blue);}
+
+/* ── CARDS ── */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px;}
+.card-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:1.5px;font-weight:600;}
+.card-body{padding:16px;}
+
+/* ── ACTIVITY LIST (mobile-friendly) ── */
+.act-item{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;}
+.act-item:last-child{border-bottom:none;}
+.act-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.act-dot.in{background:var(--green);}
+.act-dot.out{background:var(--red);}
+.act-info{flex:1;min-width:0;}
+.act-item-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.act-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.act-qty{font-family:var(--mono);font-size:13px;font-weight:600;flex-shrink:0;}
+.act-qty.in{color:var(--green);}
+.act-qty.out{color:var(--red);}
+
+/* ── STOCK LIST ── */
+.stock-item{padding:14px 16px;border-bottom:1px solid var(--border);}
+.stock-item:last-child{border-bottom:none;}
+.stock-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.stock-name{font-size:13px;font-weight:500;flex:1;min-width:0;}
+.stock-badge{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;flex-shrink:0;}
+.stock-badge.ok{background:rgba(46,204,113,.15);color:var(--green);}
+.stock-badge.low{background:rgba(240,165,0,.15);color:var(--accent);}
+.stock-badge.empty{background:rgba(231,76,60,.15);color:var(--red);}
+.stock-bar-wrap{margin-top:8px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.stock-bar{height:100%;border-radius:2px;transition:width .4s;}
+.stock-bar.ok{background:var(--green);}
+.stock-bar.low{background:var(--accent);}
+.stock-bar.empty{background:var(--red);}
+.stock-nums{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--mono);font-size:10px;color:var(--muted);}
+
+/* ── FORMS ── */
+.form-section{margin-bottom:14px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-weight:600;}
+.field input,.field select,.field textarea{
+  width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--text);padding:12px 14px;font-size:15px;font-family:var(--font);outline:none;
+  transition:border .2s;-webkit-appearance:none;appearance:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.field textarea{resize:vertical;min-height:80px;line-height:1.6;}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237d8fa8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ── SCAN CARD ── */
+.scan-card{background:linear-gradient(135deg,#1a1040,#0d1117);border:1.5px solid var(--purple);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+.scan-title{font-family:var(--mono);font-size:11px;color:var(--purple);letter-spacing:1.5px;margin-bottom:8px;}
+.scan-desc{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-family:var(--font);font-size:14px;font-weight:600;transition:all .18s;width:100%;letter-spacing:.3px;}
+.btn-accent{background:var(--accent);color:#000;}
+.btn-accent:active{background:#d49400;}
+.btn-green{background:var(--green);color:#000;}
+.btn-green:active{opacity:.85;}
+.btn-purple{background:var(--purple);color:#000;}
+.btn-purple:active{opacity:.85;}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
+.btn-ghost:active{border-color:var(--accent);color:var(--accent);}
+.btn-sm{padding:10px 16px;font-size:13px;width:auto;}
+.btn-row{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+
+/* ── ALERTS ── */
+.alert{padding:12px 14px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:12px;display:none;line-height:1.5;}
+.alert.show{display:block;}
+.alert-success{background:rgba(46,204,113,.12);border:1px solid rgba(46,204,113,.3);color:var(--green);}
+.alert-warn{background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.3);color:var(--accent);}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
+.modal-title{font-family:var(--mono);font-size:13px;color:var(--purple);letter-spacing:1px;margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.6;}
+
+/* ── DROP ZONE ── */
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px;}
+.drop-zone.drag,.drop-zone:active{border-color:var(--purple);background:rgba(167,139,250,.05);}
+.drop-icon{font-size:40px;margin-bottom:10px;}
+.drop-text{font-size:14px;color:var(--muted);line-height:1.7;}
+.drop-text b{color:var(--text);}
+#scan-preview{width:100%;border-radius:var(--radius-sm);margin-bottom:14px;display:none;border:1px solid var(--border);}
+
+/* ── SCAN RESULT ── */
+.scan-result{display:none;background:var(--bg);border:1.5px solid var(--purple);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;}
+.scan-field{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);}
+.scan-field:last-child{border-bottom:none;}
+.scan-key{font-family:var(--mono);font-size:10px;color:var(--muted);width:110px;flex-shrink:0;padding-top:2px;letter-spacing:.5px;}
+.scan-val{font-size:13px;font-weight:600;flex:1;}
+
+/* ── PROGRESS ── */
+.prog-wrap{height:3px;background:var(--border);border-radius:2px;margin:10px 0;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--accent));width:0;transition:width .5s;border-radius:2px;}
+.prog-status{font-family:var(--mono);font-size:10px;color:var(--muted);min-height:16px;margin-bottom:8px;}
+
+/* ── REPORT OUTPUT ── */
+.report-out{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;font-size:14px;line-height:1.8;white-space:pre-wrap;margin-top:14px;display:none;min-height:120px;}
+.report-out.loading{color:var(--muted);font-family:var(--mono);}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── EXPORT BUTTONS ── */
+.export-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+
+/* ── SECTION DIVIDER ── */
+.section-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin:18px 0 10px;padding-left:2px;}
+
+@media(min-width:600px){
+  .kpi-grid{grid-template-columns:repeat(4,1fr);}
+  .btn-row{flex-direction:row;}
+  .btn{width:auto;}
+  .modal-bg{align-items:center;}
+  .modal{border-radius:20px;max-height:85vh;}
+  .modal-handle{display:none;}
+  .export-row{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="brand">WISP<span> · </span>P110</div>
+    <div class="sub-brand">Waterloo Innovent Solar Park</div>
+  </div>
+  <div class="date-pill" id="datePill"></div>
+</div>
+
+<!-- PAGES -->
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dash">
+  <div class="kpi-grid">
+    <div class="kpi orange"><div class="kpi-label">Received</div><div class="kpi-val" id="k-rec">0</div></div>
+    <div class="kpi red"><div class="kpi-label">Issued</div><div class="kpi-val" id="k-iss">0</div></div>
+    <div class="kpi green"><div class="kpi-label">In Stock</div><div class="kpi-val" id="k-stk">0</div></div>
+    <div class="kpi blue"><div class="kpi-label">Low Alerts</div><div class="kpi-val" id="k-low">0</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">RECENT ACTIVITY</div></div>
+    <div id="act-list"><div class="empty"><div class="empty-icon">📋</div>No activity yet</div></div>
+  </div>
+</div>
+
+<!-- RECEIVE -->
+<div class="page" id="page-recv">
+  <div class="scan-card">
+    <div class="scan-title">// AI PALLET SCANNER</div>
+    <div class="scan-desc">Photograph the pink pallet label — AI reads it and fills the form for you.</div>
+    <button class="btn btn-purple" onclick="openScan()"><span>📷</span> SCAN PALLET TAG</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">RECORD DELIVERY</div></div>
+    <div class="card-body">
+      <div id="alert-recv" class="alert alert-success">✓ Delivery recorded</div>
+      <div class="field-row">
+        <div class="field"><label>Date</label><input type="date" id="r-date"></div>
+        <div class="field"><label>Condition</label>
+          <select id="r-cond"><option>Good</option><option>Damaged-Minor</option><option>Damaged-Major</option><option>Incomplete</option><option>Excess</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>PO Number</label><input type="text" id="r-po" placeholder="P110-000721"></div>
+        <div class="field"><label>Pallet No</label><input type="text" id="r-pal" placeholder="92 of 113"></div>
+      </div>
+      <div class="field"><label>Item Description</label><input type="text" id="r-item" placeholder="e.g. PEG_DOWN PLATE 15 ND-16"></div>
+      <div class="field-row">
+        <div class="field"><label>Quantity</label><input type="number" id="r-qty" inputmode="numeric" placeholder="1530"></div>
+        <div class="field"><label>Unit</label>
+          <select id="r-unit"><option>NOS</option><option>KGS</option><option>MTR</option><option>SETS</option><option>PCS</option><option>ROLLS</option><option>BOXES</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Supplier</label><input type="text" id="r-sup" placeholder="Jurchen Technology India"></div>
+      <div class="field"><label>Received By</label><input type="text" id="r-by" placeholder="Your name"></div>
+      <div class="field"><label>Notes / Remarks</label><textarea id="r-notes" placeholder="Damage, missing items, observations..."></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-accent" onclick="doReceive()">RECORD DELIVERY</button>
+        <button class="btn btn-ghost" onclick="clearRecv()">CLEAR</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ISSUE -->
+<div class="page" id="page-issue">
+  <div class="card">
+    <div class="card-header"><div class="card-title">ISSUE TO FIELD</div></div>
+    <div class="card-body">
+      <div id="alert-issue" class="alert alert-success">✓ Issuance recorded</div>
+      <div class="field-row">
+        <div class="field"><label>Date</label><input type="date" id="i-date"></div>
+        <div class="field"><label>Item</label>
+          <select id="i-item"><option value="">Select item...</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Quantity</label><input type="number" id="i-qty" inputmode="numeric" placeholder="Qty"></div>
+        <div class="field"><label>Issued By</label><input type="text" id="i-by" placeholder="Your name"></div>
+      </div>
+      <div class="field"><label>Issued To (Name / Team)</label><input type="text" id="i-to" placeholder="e.g. Electrical Team A"></div>
+      <div class="field"><label>Work Zone / Location</label><input type="text" id="i-zone" placeholder="e.g. Block 3, Row 5"></div>
+      <div class="field"><label>Notes / Purpose</label><textarea id="i-notes" placeholder="Work order, purpose..."></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-accent" onclick="doIssue()">RECORD ISSUANCE</button>
+        <button class="btn btn-ghost" onclick="clearIssue()">CLEAR</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STOCK -->
+<div class="page" id="page-stock">
+  <div class="section-label">Export Data</div>
+  <div class="export-row">
+    <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📄 CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportXLSX()">📊 Excel</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportFullXLSX()">📦 Full Log</button>
+  </div>
+
+  <div class="section-label" style="margin-top:18px">Stock Levels</div>
+  <div class="card">
+    <div id="stock-list"><div class="empty"><div class="empty-icon">📦</div>No stock data yet</div></div>
+  </div>
+</div>
+
+<!-- REPORT -->
+<div class="page" id="page-report">
+  <div class="card">
+    <div class="card-header"><div class="card-title">AI REPORT GENERATOR</div></div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field"><label>Period</label>
+          <select id="rep-period"><option>Daily</option><option>Weekly</option><option>Monthly</option></select>
+        </div>
+        <div class="field"><label>Date</label><input type="date" id="rep-date"></div>
+      </div>
+      <div class="field"><label>Prepared By</label><input type="text" id="rep-by" placeholder="Your name"></div>
+      <div class="field"><label>Extra Context (optional)</label>
+        <textarea id="rep-ctx" placeholder="Delays, damaged goods, weather, team issues..."></textarea>
+      </div>
+      <button class="btn btn-green" onclick="genReport()">🤖 GENERATE REPORT</button>
+      <div class="report-out" id="rep-out"></div>
+      <div id="rep-actions" style="display:none;margin-top:12px;">
+        <div class="export-row">
+          <button class="btn btn-ghost btn-sm" onclick="downloadDocx()">📝 Download .docx</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyReport()">📋 Copy Text</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="section-label" style="margin-top:0">How it works</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.8">
+        1. Log deliveries & issuances throughout the day<br>
+        2. Come here → tap <b style="color:var(--green)">Generate Report</b><br>
+        3. Download as <b style="color:var(--text)">.docx</b> — open in Word, ready to send<br>
+        4. Or copy text → paste into WhatsApp / Email
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="nav('dash',this)"><span class="icon">📊</span>Dashboard</button>
+  <button class="nav-item" onclick="nav('recv',this)"><span class="icon">📥</span>Receive</button>
+  <button class="nav-item" onclick="nav('issue',this)"><span class="icon">📤</span>Issue</button>
+  <button class="nav-item" onclick="nav('stock',this)"><span class="icon">📦</span>Stock</button>
+  <button class="nav-item" onclick="nav('report',this)"><span class="icon">🤖</span>Report</button>
+</nav>
+
+<!-- SCAN MODAL -->
+<div class="modal-bg" id="scanModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📷 SCAN PALLET TAG</div>
+    <div class="modal-sub">Take a photo of the pink pallet label. AI will extract all details automatically.</div>
+
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileIn').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="onDrop(event)">
+      <div class="drop-icon">📦</div>
+      <div class="drop-text"><b>Tap to take photo or upload image</b><br>Works with your phone camera</div>
+    </div>
+    <input type="file" id="fileIn" accept="image/*" capture="environment" style="display:none" onchange="onFile(this.files[0])">
+    <img id="scan-preview" src="" alt="">
+
+    <div class="prog-wrap"><div class="prog-fill" id="prog"></div></div>
+    <div class="prog-status" id="prog-status"></div>
+
+    <div class="scan-result" id="scan-result"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-green" id="use-btn" style="display:none" onclick="applyData()">✓ USE THIS DATA</button>
+      <button class="btn btn-ghost" onclick="closeScan()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let logs = JSON.parse(localStorage.getItem('wisp_logs') || '[]');
+let scanned = null;
+let lastReport = '';
+
+// ── INIT ──
+document.getElementById('datePill').textContent = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}).toUpperCase();
+const today = new Date().toISOString().split('T')[0];
+['r-date','i-date','rep-date'].forEach(id => document.getElementById(id).value = today);
+
+// Pre-load from pallet images if empty
+if (!logs.length) {
+  logs = [
+    {d:'2025-11-08',t:'IN',item:'PEG_DOWN PLATE 15 ND-16',qty:1530,unit:'NOS',po:'P110-000721',pal:'92 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'PEG_TOP PLATE 15 ND-16',qty:1345,unit:'NOS',po:'P110-000721',pal:'90 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'PEG_GROUND PLATE 100 ND-16',qty:4284,unit:'NOS',po:'P110-000721',pal:'74 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'MODULE MIDDLE CLIP JT-MKG III WITH GROUND PINS',qty:23000,unit:'NOS',po:'P110-000721',pal:'103 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'JTG_PEG_PS TOP PLATE-15 ND16 IN-50',qty:587,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'JTG_PEG_PS DOWN PLATE-15 ND16 IN-50',qty:633,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'PEG-JT-MKG III SS304',qty:2100,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'Z-END CLIP-30_L-70MM',qty:400,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'CYLINDER HEADED BOLT M8X40MM SS304',qty:2100,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'CYLINDER HEADED BOLT M8X20MM SS304',qty:400,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'SPRING WASHER M8',qty:3000,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'PLAIN WASHER M8',qty:1000,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'CYLINDER HEADED BOLT M6X20MM SS304',qty:100,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'HEX NUT M6 SS304',qty:100,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+    {d:'2025-11-08',t:'IN',item:'PLAIN WASHER M6 SS304',qty:1000,unit:'NOS',po:'P110-000723',pal:'113 of 113',sup:'Jurchen Technology India',cond:'Good',by:'',notes:'Pre-loaded from pallet scan'},
+  ];
+  save();
+}
+renderAll();
+
+// ── NAV ──
+function nav(page, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  el.classList.add('active');
+  window.scrollTo(0,0);
+  if(page==='stock') renderStock();
+  if(page==='issue') fillItemSelect();
+}
+
+// ── STOCK CALC ──
+function getStock() {
+  const s = {};
+  logs.forEach(l => {
+    if (!s[l.item]) s[l.item] = {rec:0, iss:0, unit:l.unit||'NOS'};
+    if (l.t==='IN')  s[l.item].rec += +l.qty;
+    if (l.t==='OUT') s[l.item].iss += +l.qty;
+  });
+  return s;
+}
+
+// ── RENDER ALL ──
+function renderAll() { renderDash(); renderStock(); fillItemSelect(); }
+
+function renderDash() {
+  const s = getStock();
+  let rec=0, iss=0, stk=0, low=0;
+  Object.values(s).forEach(v => {
+    rec+=v.rec; iss+=v.iss;
+    const r=v.rec-v.iss; stk+=r;
+    if(r>0 && r/v.rec<0.2) low++;
+  });
+  document.getElementById('k-rec').textContent = rec.toLocaleString();
+  document.getElementById('k-iss').textContent = iss.toLocaleString();
+  document.getElementById('k-stk').textContent = stk.toLocaleString();
+  document.getElementById('k-low').textContent = low;
+
+  const el = document.getElementById('act-list');
+  if (!logs.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>No activity yet</div>'; return; }
+  el.innerHTML = [...logs].reverse().slice(0,20).map(l=>`
+    <div class="act-item">
+      <div class="act-dot ${l.t==='IN'?'in':'out'}"></div>
+      <div class="act-info">
+        <div class="act-item-name">${l.item}</div>
+        <div class="act-meta">${l.d} · ${l.t==='IN'?'Received':'Issued to '+l.to} ${l.by?'· '+l.by:''}</div>
+      </div>
+      <div class="act-qty ${l.t==='IN'?'in':'out'}">${l.t==='IN'?'+':'−'}${(+l.qty).toLocaleString()} ${l.unit||''}</div>
+    </div>`).join('');
+}
+
+function renderStock() {
+  const s = getStock();
+  const el = document.getElementById('stock-list');
+  if (!Object.keys(s).length) { el.innerHTML='<div class="empty"><div class="empty-icon">📦</div>No stock data</div>'; return; }
+  el.innerHTML = Object.entries(s).map(([item,v])=>{
+    const rem=v.rec-v.iss, pct=v.rec>0?Math.max(0,rem/v.rec):0;
+    const st=rem<=0?'empty':pct<0.2?'low':'ok';
+    const stl={empty:'EMPTY',low:'LOW',ok:'OK'}[st];
+    const barW=Math.round(pct*100);
+    return `<div class="stock-item">
+      <div class="stock-row">
+        <div class="stock-name">${item}</div>
+        <span class="stock-badge ${st}">${stl}</span>
+      </div>
+      <div class="stock-bar-wrap"><div class="stock-bar ${st}" style="width:${barW}%"></div></div>
+      <div class="stock-nums">
+        <span>In stock: <b style="color:var(--text)">${rem.toLocaleString()} ${v.unit}</b></span>
+        <span>${v.iss.toLocaleString()} issued / ${v.rec.toLocaleString()} received</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fillItemSelect() {
+  const s=getStock(), sel=document.getElementById('i-item'), prev=sel.value;
+  sel.innerHTML='<option value="">Select item...</option>';
+  Object.keys(s).forEach(item=>{
+    const o=document.createElement('option');
+    o.value=o.textContent=item; sel.appendChild(o);
+  });
+  if(prev) sel.value=prev;
+}
+
+// ── RECEIVE ──
+function doReceive() {
+  const d=document.getElementById('r-date').value;
+  const item=document.getElementById('r-item').value.trim();
+  const qty=document.getElementById('r-qty').value;
+  if(!d||!item||!qty){alert('Please fill Date, Item and Quantity');return;}
+  logs.push({d,t:'IN',item,qty:+qty,unit:v('r-unit'),po:v('r-po'),pal:v('r-pal'),sup:v('r-sup'),cond:v('r-cond'),by:v('r-by'),notes:v('r-notes')});
+  save(); showAlert('alert-recv'); clearRecv(); renderAll();
+}
+function clearRecv(){['r-po','r-pal','r-item','r-qty','r-sup','r-by','r-notes'].forEach(id=>document.getElementById(id).value='');}
+
+// ── ISSUE ──
+function doIssue() {
+  const d=document.getElementById('i-date').value;
+  const item=document.getElementById('i-item').value;
+  const qty=+document.getElementById('i-qty').value;
+  if(!d||!item||!qty){alert('Please fill Date, Item and Quantity');return;}
+  const s=getStock(), avail=s[item]?(s[item].rec-s[item].iss):0;
+  if(qty>avail){alert(`Not enough stock! Available: ${avail} ${s[item]?.unit||''}`);return;}
+  logs.push({d,t:'OUT',item,qty,unit:s[item]?.unit||'NOS',to:v('i-to'),zone:v('i-zone'),by:v('i-by'),notes:v('i-notes')});
+  save(); showAlert('alert-issue'); clearIssue(); renderAll();
+}
+function clearIssue(){['i-qty','i-to','i-zone','i-by','i-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('i-item').value='';}
+
+// ── HELPERS ──
+function v(id){return document.getElementById(id).value;}
+function save(){localStorage.setItem('wisp_logs',JSON.stringify(logs));}
+function showAlert(id){const el=document.getElementById(id);el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000);}
+
+// ── EXPORTS ──
+function exportCSV() {
+  const s=getStock();
+  let csv='Item,Received,Issued,In Stock,Unit\n';
+  Object.entries(s).forEach(([item,v])=>csv+=`"${item}",${v.rec},${v.iss},${v.rec-v.iss},${v.unit}\n`);
+  dl(new Blob([csv],{type:'text/csv'}),`WISP_Stock_${today}.csv`);
+}
+
+function exportXLSX() {
+  const s=getStock();
+  const rows=[['Item','Received','Issued','In Stock','Unit']];
+  Object.entries(s).forEach(([item,v])=>rows.push([item,v.rec,v.iss,v.rec-v.iss,v.unit]));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Stock');
+  XLSX.writeFile(wb,`WISP_Stock_${today}.xlsx`);
+}
+
+function exportFullXLSX() {
+  const recRows=[['Date','Item','Qty','Unit','PO','Pallet','Supplier','Condition','By','Notes']];
+  const issRows=[['Date','Item','Qty','Unit','Issued To','Zone','By','Notes']];
+  logs.forEach(l=>{
+    if(l.t==='IN') recRows.push([l.d,l.item,l.qty,l.unit,l.po||'',l.pal||'',l.sup||'',l.cond||'',l.by||'',l.notes||'']);
+    if(l.t==='OUT') issRows.push([l.d,l.item,l.qty,l.unit,l.to||'',l.zone||'',l.by||'',l.notes||'']);
+  });
+  const s=getStock();
+  const stkRows=[['Item','Received','Issued','In Stock','Unit']];
+  Object.entries(s).forEach(([item,v])=>stkRows.push([item,v.rec,v.iss,v.rec-v.iss,v.unit]));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(stkRows),'Stock Register');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(recRows),'Goods Received');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(issRows),'Field Issuance');
+  XLSX.writeFile(wb,`WISP_Full_Log_${today}.xlsx`);
+}
+
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();}
+
+// ── AI REPORT ──
+async function genReport() {
+  const s=getStock();
+  const period=v('rep-period'), date=v('rep-date'), by=v('rep-by')||'Site Assistant', ctx=v('rep-ctx');
+  const stockTxt=Object.entries(s).map(([item,v])=>`- ${item}: received ${v.rec}, issued ${v.iss}, balance ${v.rec-v.iss} ${v.unit}`).join('\n');
+  const actTxt=[...logs].reverse().slice(0,20).map(l=>`[${l.d}] ${l.t==='IN'?'RECEIVED':'ISSUED'}: ${l.qty} ${l.unit||''} of ${l.item}${l.t==='OUT'?' → '+l.to:''}`).join('\n');
+
+  const out=document.getElementById('rep-out');
+  const actions=document.getElementById('rep-actions');
+  out.style.display='block'; actions.style.display='none';
+  out.className='report-out loading';
+  out.innerHTML='<span class="spinner"></span>Generating report...';
+
+  const prompt=`You are writing a professional inventory report for WISP Solar Power Plant, Waterloo, Sierra Leone (Project P110, managed by Innovent).
+
+Write a ${period} inventory report. Date: ${date}. Prepared by: ${by}.
+
+STOCK DATA:
+${stockTxt||'No data.'}
+
+RECENT ACTIVITY:
+${actTxt||'No activity.'}
+
+ADDITIONAL CONTEXT: ${ctx||'None'}
+
+Write the report with these sections:
+1. REPORT HEADER (project, reference, date, period, prepared by)
+2. DELIVERIES RECEIVED
+3. ITEMS ISSUED TO FIELD
+4. CURRENT STOCK STATUS (highlight LOW or EMPTY items clearly)
+5. ISSUES & OBSERVATIONS
+6. NEXT STEPS & RECOMMENDATIONS
+
+Rules: Professional tone. Clear simple English (readable by French project management team). Use numbers and specifics. Max 350 words. Format section headings in CAPS. Do not use markdown symbols like ** or ##.`;
+
+  try {
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:prompt}]})
+    });
+    const data=await res.json();
+    lastReport=data.content?.map(i=>i.text||'').join('')||'Error.';
+    out.textContent=lastReport; out.className='report-out'; actions.style.display='block';
+  } catch(e) {
+    out.textContent='Error: Could not connect. Check internet and try again.'; out.className='report-out';
+  }
+}
+
+async function downloadDocx() {
+  if(!lastReport){alert('Generate report first');return;}
+  const {Document,Packer,Paragraph,TextRun,HeadingLevel,AlignmentType,BorderStyle}=docx;
+
+  const lines=lastReport.split('\n').filter(l=>l.trim());
+  const children=[];
+
+  // Title
+  children.push(new Paragraph({
+    children:[new TextRun({text:'WISP — INVENTORY REPORT',bold:true,size:28,color:'C47D00'})],
+    alignment:AlignmentType.CENTER,spacing:{after:200}
+  }));
+  children.push(new Paragraph({
+    children:[new TextRun({text:'Waterloo Innovent Solar Park · Project P110 · Sierra Leone',size:18,color:'666666'})],
+    alignment:AlignmentType.CENTER,spacing:{after:400}
+  }));
+
+  lines.forEach(line=>{
+    const isHeading=line===line.toUpperCase()&&line.length>5&&/[A-Z]{3}/.test(line);
+    if(isHeading){
+      children.push(new Paragraph({
+        children:[new TextRun({text:line,bold:true,size:22,color:'1A2035'})],
+        spacing:{before:300,after:100},
+        border:{bottom:{style:BorderStyle.SINGLE,size:4,color:'F0A500'}}
+      }));
+    } else {
+      children.push(new Paragraph({
+        children:[new TextRun({text:line,size:20})],
+        spacing:{after:80}
+      }));
+    }
+  });
+
+  // Footer
+  children.push(new Paragraph({spacing:{before:400}}));
+  children.push(new Paragraph({
+    children:[new TextRun({text:`Generated: ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})} · WISP P110 Inventory System`,size:16,color:'999999',italics:true})],
+    alignment:AlignmentType.CENTER
+  }));
+
+  const doc=new Document({sections:[{properties:{},children}]});
+  const blob=await Packer.toBlob(doc);
+  dl(blob,`WISP_Report_${v('rep-date')||today}.docx`);
+}
+
+function copyReport(){
+  if(!lastReport){alert('Generate report first');return;}
+  navigator.clipboard.writeText(lastReport).then(()=>{
+    const btn=event.target;btn.textContent='✓ Copied!';setTimeout(()=>btn.textContent='📋 Copy Text',2000);
+  });
+}
+
+// ── SCAN MODAL ──
+function openScan(){
+  scanned=null;
+  document.getElementById('scanModal').classList.add('open');
+  document.getElementById('scan-preview').style.display='none';
+  document.getElementById('scan-result').style.display='none';
+  document.getElementById('use-btn').style.display='none';
+  document.getElementById('prog-status').textContent='';
+  document.getElementById('prog').style.width='0';
+  document.getElementById('fileIn').value='';
+  document.getElementById('dropZone').style.display='block';
+}
+function closeScan(){document.getElementById('scanModal').classList.remove('open');}
+function onDrop(e){e.preventDefault();document.getElementById('dropZone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f?.type.startsWith('image/'))onFile(f);}
+
+function onFile(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=document.getElementById('scan-preview');
+    img.src=e.target.result; img.style.display='block';
+    document.getElementById('dropZone').style.display='none';
+    scanImg(e.target.result.split(',')[1]);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function scanImg(b64){
+  const prog=document.getElementById('prog'), stat=document.getElementById('prog-status');
+  stat.textContent='Reading pallet label...'; prog.style.width='30%';
+  const prompt=`Extract ALL fields from this pallet shipping label. Return ONLY valid JSON, nothing else:
+{"po_number":"","pallet_no":"","item_description":"","total_quantity":"","unit":"NOS","net_weight":"","gross_weight":"","supplier":"","date":"","notes":""}
+Use empty string for missing fields. Extract the main product name for item_description.`;
+  try{
+    prog.style.width='60%';
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,messages:[{role:"user",content:[
+        {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},
+        {type:"text",text:prompt}
+      ]}]})
+    });
+    const data=await res.json();
+    prog.style.width='90%';
+    const txt=data.content?.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
+    scanned=JSON.parse(txt);
+    prog.style.width='100%';
+    stat.textContent='✓ Label read successfully';
+
+    const fields=[['PO Number',scanned.po_number],['Pallet No',scanned.pallet_no],['Item',scanned.item_description],
+      ['Quantity',scanned.total_quantity+(scanned.unit?' '+scanned.unit:'')],
+      ['Net Weight',scanned.net_weight],['Supplier',scanned.supplier],['Date',scanned.date]];
+    document.getElementById('scan-result').innerHTML=
+      fields.filter(([,v])=>v?.trim()).map(([k,v])=>`<div class="scan-field"><span class="scan-key">${k}</span><span class="scan-val">${v}</span></div>`).join('');
+    document.getElementById('scan-result').style.display='block';
+    document.getElementById('use-btn').style.display='flex';
+  }catch(e){
+    prog.style.width='100%'; stat.textContent='⚠ Could not read label. Fill form manually.';
+  }
+}
+
+function applyData(){
+  if(!scanned)return;
+  document.getElementById('r-po').value=scanned.po_number||'';
+  document.getElementById('r-pal').value=scanned.pallet_no||'';
+  document.getElementById('r-item').value=scanned.item_description||'';
+  document.getElementById('r-qty').value=scanned.total_quantity||'';
+  document.getElementById('r-sup').value=scanned.supplier||'';
+  if(scanned.net_weight||scanned.gross_weight)
+    document.getElementById('r-notes').value=`Net: ${scanned.net_weight||'?'} · Gross: ${scanned.gross_weight||'?'}`;
+  closeScan();
+  // Switch to receive page
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-recv').classList.add('active');
+  document.querySelectorAll('.nav-item')[1].classList.add('active');
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
